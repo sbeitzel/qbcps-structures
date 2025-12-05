@@ -40,15 +40,26 @@ fileprivate extension Range {
 /// ranges in.
 public struct DiscontinuousRange<T: Strideable> {
   var ranges: [Range<T>]
-  
+
+  public var count: T.Stride {
+    ranges.reduce(0, { $0 + $1.lowerBound.distance(to: $1.upperBound) })
+  }
+
   public init() {
     ranges = []
   }
-  
+
+  public init(_ sourceRanges: Range<T>...) {
+    ranges = []
+    for range in sourceRanges {
+      add(range: range)
+    }
+  }
+
   public mutating func remove(range: Range<T>) {
     ranges.removeAll(where: { $0 == range })
   }
-  
+
   public mutating func add(range: Range<T>) {
     var overlappingRanges: [Range<T>] = []
     for existingRange in ranges {
@@ -67,16 +78,12 @@ public struct DiscontinuousRange<T: Strideable> {
     }
     ranges.append(combinedRange)
   }
-  
+
   public func contains(_ element: T) -> Bool {
     for range in ranges {
       if range.contains(element) { return true }
     }
     return false
-  }
-  
-  public func count() -> T.Stride {
-    ranges.reduce(0, { $0 + $1.lowerBound.distance(to: $1.upperBound) })
   }
 }
 
