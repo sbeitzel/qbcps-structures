@@ -23,40 +23,24 @@ fileprivate extension Range {
 /// Currently only useful for answering the questions, "Is *element* contained
 /// in the defined range(s)?" and "How many elements can fit in the defined
 /// ranges?"
-/// An obvious to-do item would be to implement some kind of enumeration
-/// capability, so that one might define a `DiscontinuousRange` and then
-/// write code to iterate over the whole thing:
-/// ```
-/// var disjointInts = DiscontinuousRange<Int>()
-/// disjointInts.add(range: 0..<5)
-/// disjointInts.add(range: 7..<10)
-/// for number in disjointInts {
-///    print("\(number) ")
-/// }
-/// ```
-/// ...and expect to see printed `0 1 2 3 7 8 9 ` This is not yet implemented,
-/// but it would be cool. Implicit in that implementation, by the way, would be
-/// keeping the ranges sorted so that it wouldn't matter what order you added the
-/// ranges in.
 public struct DiscontinuousRange<T: Strideable> {
-  var ranges: [Range<T>]
+  var ranges: [Range<T>] = []
 
   public var count: T.Stride {
     ranges.reduce(0, { $0 + $1.lowerBound.distance(to: $1.upperBound) })
   }
 
-  public init() {
-    ranges = []
-  }
+  public init() { }
 
   public init(_ sourceRanges: Range<T>...) {
-    ranges = []
     for range in sourceRanges {
       add(range: range)
     }
   }
 
   public mutating func remove(range: Range<T>) {
+    // NOTE: we don't do a sort here because the `add` implementation
+    // guarantees that every range insertion results in an ordered list.
     ranges.removeAll(where: { $0 == range })
   }
 
@@ -68,8 +52,7 @@ public struct DiscontinuousRange<T: Strideable> {
       }
     }
     ranges.removeAll(where: { overlappingRanges.contains($0) })
-    // now, we are dealing with the case where we know that combining
-    // results in a single range
+    // now, we are dealing with the case where we know that combining results in a single range
     // start with the range
     var combinedRange = range
     // combine with each overlap
@@ -77,6 +60,12 @@ public struct DiscontinuousRange<T: Strideable> {
       combinedRange = combinedRange.combined(with: overlappingRange).first!
     }
     ranges.append(combinedRange)
+    // last thing we do, we have to sort the ranges
+    ranges.sort(by: { lhs, rhs in
+      // we already know that the ranges don't overlap
+      // so all we have to do is compare their beginnings
+      return lhs.lowerBound < rhs.lowerBound
+    })
   }
 
   public func contains(_ element: T) -> Bool {
@@ -94,3 +83,45 @@ extension DiscontinuousRange where T.Stride: SignedInteger {
 }
 
 extension DiscontinuousRange: Sendable where T: Sendable {}
+
+extension DiscontinuousRange: Sequence where T: Strideable, T.Stride: SignedInteger {
+  public func makeIterator() -> some IteratorProtocol<T> {
+    DRIterator(ranges)
+  }
+
+  // for each range in the list of ranges, we get the iterator
+  // if the iterator.next returns nil, we go to the next range
+  // if there are no more ranges, just return nil
+  struct DRIterator: IteratorProtocol {
+    typealias Element = T
+
+    let ranges: [Range<T>]
+    var currentRangeIndex: Int = 0
+    var currentIterator: IndexingIterator<Range<T>>?
+
+    init(_ ranges: [Range<T>]) {
+      // first, we collect all the ranges
+      self.ranges = ranges
+      if !ranges.isEmpty {
+        currentIterator = ranges.first!.makeIterator()
+      }
+    }
+
+    mutating func next() -> T? {
+      guard currentIterator != nil else { return nil }
+      if let nextElement = currentIterator?.next() {
+        return nextElement
+      }
+      // okay, there was no next element
+      // so, we go to the next range
+      currentRangeIndex += 1
+      if currentRangeIndex < ranges.count {
+        currentIterator = ranges[currentRangeIndex].makeIterator()
+        return currentIterator?.next()
+      } else {
+        currentIterator = nil
+      }
+      return nil
+    }
+  }
+}
