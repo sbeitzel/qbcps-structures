@@ -1,5 +1,5 @@
 //
-//  Test.swift
+//  DiscontinuousRange.swift
 //  QBStructures
 //
 //  Created by Stephen Beitzel on 12/5/25.
@@ -10,7 +10,19 @@ import Testing
 @testable import QBStructures
 
 struct Test {
-  
+  @Test func testIterability() async throws {
+    let first = 0..<5
+    let second = 6..<10
+    let dRange = DiscontinuousRange<Int>(second, first)
+    // iterating over the whole range should result in [0, 1, 2, 3, 4, 6, 7, 8, 9]
+    let expected: [Int] = [0, 1, 2, 3, 4, 6, 7, 8, 9]
+    var produced: [Int] = []
+    for value in dRange {
+      produced.append(value)
+    }
+    #expect(produced == expected)
+  }
+
   @Test func testOverlappingCombine() async throws {
     let first = 0..<10
     let second = 8..<15

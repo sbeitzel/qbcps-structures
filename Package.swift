@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "QBStructures",
+    name: "qbcps-structures",
     // These minimum platform values come from the documentation for the structures and features used in the
     // library. It's not that I intend to build and test on these ancient versions, it's just that I'm not using
     // any language features that were introduced after the declared versions.
