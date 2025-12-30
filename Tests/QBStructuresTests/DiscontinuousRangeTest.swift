@@ -9,7 +9,7 @@ import Testing
 
 @testable import QBStructures
 
-struct Test {
+struct DiscontinuousRangeTest {
   @Test func testIterability() async throws {
     let first = 0..<5
     let second = 6..<10
